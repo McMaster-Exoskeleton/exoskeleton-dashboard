@@ -1,0 +1,18 @@
+[project]
+name = "exoskeleton-telemetry-backend"
+version = "0.1.0"
+description = "WebSocket server for exoskeleton telemetry data"
+requires-python = ">=3.9"
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+select = ["E", "F", "I", "N", "W"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
