@@ -1,4 +1,4 @@
-[project]
+cd[project]
 name = "exoskeleton-telemetry-backend"
 version = "0.1.0"
 description = "WebSocket server for exoskeleton telemetry data"
