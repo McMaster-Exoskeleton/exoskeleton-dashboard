@@ -359,9 +359,35 @@ class DataCollector:
 
     def _generate_power(self, current_time: float, motors: MotorsData) -> PowerData:
         """Generate power system data."""
-        # Battery depletes over time (~0.01%/sec), wraps to 100 at 20%
+        # Try to get real power data from MCU
+        from app.main import real_power_data
+
+        if real_power_data and real_power_data.get('healthy'):
+            # Use REAL data from Power MCU
+            battery_voltage = real_power_data['voltage']
+            current_draw = real_power_data['current']
+
+            # Calculate battery percentage from voltage (simple linear approximation)
+            # TODO: Adjust V_MAX and V_MIN based on actual battery
+            V_MAX = 26.0  # Adjust for your battery
+            V_MIN = 20.0  # Adjust for your battery
+
+            if battery_voltage >= V_MAX:
+                battery_percentage = 100.0
+            elif battery_voltage <= V_MIN:
+                battery_percentage = 0.0
+            else:
+                battery_percentage = ((battery_voltage - V_MIN) / (V_MAX - V_MIN)) * 100.0
+
+            return PowerData(
+                battery_percentage=battery_percentage,
+                battery_voltage=battery_voltage,
+                current_draw=current_draw,
+            )
+
+        # Fallback to MOCK data if no real data available
         elapsed = current_time - self._start_time
-        depletion = elapsed * 0.01  
+        depletion = elapsed * 0.01
         self._battery_percentage = 100.0 - depletion
 
         if self._battery_percentage <= 20.0:
