@@ -2,8 +2,9 @@ import logging
 
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
+from app.models import PowerUpdate
+from app.power_state import power_state
 from app.websocket import websocket_endpoint
 
 # ---------------------------------------------------------------------------
@@ -19,20 +20,6 @@ app = FastAPI(
     description="WebSocket server for streaming exoskeleton telemetry data",
     version="0.1.0",
 )
-
-# Global variable to store real power data from MCU
-real_power_data = None
-
-# Pydantic model for power data
-class PowerUpdate(BaseModel):
-    voltage: float
-    current: float
-    power: float
-    healthy: int
-    voltage2: float
-    current2: float
-    power2: float
-    healthy2: int
 
 # Configure CORS for frontend development
 # Using allow_origins=["*"] ensures WebSocket upgrades are not blocked by
@@ -58,9 +45,8 @@ async def health_check():
 
 @app.post("/power/update")
 async def update_power(data: PowerUpdate):
-    """Receive real-time power data from MCU via serial bridge"""
-    global real_power_data
-    real_power_data = data.dict()
+    """Receive real-time power data from MCU via serial bridge."""
+    await power_state.update(data)
     return {"status": "ok"}
 
 

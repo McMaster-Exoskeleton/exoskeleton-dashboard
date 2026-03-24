@@ -51,10 +51,19 @@ export interface SensorsData {
     right_knee: IMUData;
 }
 
+export interface SensorReading {
+    voltage: number;
+    current: number;
+    power: number;
+    healthy: boolean;
+}
+
 export interface PowerData {
     battery_percentage: number;
     battery_voltage: number;
     current_draw: number;
+    sensors: SensorReading[];
+    is_stale: boolean;
 }
 
 export interface SystemData {

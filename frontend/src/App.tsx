@@ -169,40 +169,83 @@ function App() {
           </div>
 
           {/* Power Section */}
-          <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
+          <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 lg:col-span-2">
             <h2 className="text-xl font-bold mb-4 text-blue-400">Power System</h2>
 
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Battery:</span>
-                <span className={`font-semibold ${getBatteryColor(telemetry.power.battery_percentage)}`}>
-                  {telemetry.power.battery_percentage.toFixed(1)}%
-                </span>
+            {/* Stale Data Warning */}
+            {telemetry.power.is_stale && (
+              <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-500 rounded text-yellow-300 flex items-center gap-2">
+                <span className="text-lg">⚠</span>
+                <span>Sensor data is stale - using mock values</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Battery Summary */}
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Battery:</span>
+                  <span className={`font-semibold ${getBatteryColor(telemetry.power.battery_percentage)}`}>
+                    {telemetry.power.battery_percentage.toFixed(1)}%
+                  </span>
+                </div>
+
+                {/* Battery Visual Indicator */}
+                <div className="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      telemetry.power.battery_percentage > 50
+                        ? 'bg-green-500'
+                        : telemetry.power.battery_percentage > 20
+                        ? 'bg-yellow-500'
+                        : 'bg-red-500'
+                    }`}
+                    style={{ width: `${telemetry.power.battery_percentage}%` }}
+                  />
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Voltage:</span>
+                  <span className="font-mono">{telemetry.power.battery_voltage.toFixed(2)} V</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Total Current:</span>
+                  <span className="font-mono">{telemetry.power.current_draw.toFixed(2)} A</span>
+                </div>
               </div>
 
-              {/* Battery Visual Indicator */}
-              <div className="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${
-                    telemetry.power.battery_percentage > 50
-                      ? 'bg-green-500'
-                      : telemetry.power.battery_percentage > 20
-                      ? 'bg-yellow-500'
-                      : 'bg-red-500'
-                  }`}
-                  style={{ width: `${telemetry.power.battery_percentage}%` }}
-                />
-              </div>
+              {/* Individual Sensors */}
+              {telemetry.power.sensors.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-sm text-gray-400 mb-2">INA228 Sensors:</div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {telemetry.power.sensors.map((sensor, idx) => (
+                      <div
+                        key={idx}
+                        className={`flex justify-between items-center p-2 rounded text-sm ${
+                          sensor.healthy ? 'bg-gray-700/50' : 'bg-red-900/30 border border-red-500'
+                        }`}
+                      >
+                        <span className="text-gray-400">S{idx + 1}:</span>
+                        <span className="font-mono">
+                          {sensor.voltage.toFixed(1)}V / {sensor.current.toFixed(2)}A
+                        </span>
+                        <span className={sensor.healthy ? 'text-green-400' : 'text-red-400'}>
+                          {sensor.healthy ? '✓' : '✗'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-              <div className="flex justify-between">
-                <span className="text-gray-400">Voltage:</span>
-                <span className="font-mono">{telemetry.power.battery_voltage.toFixed(2)} V</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-gray-400">Current Draw:</span>
-                <span className="font-mono">{telemetry.power.current_draw.toFixed(2)} A</span>
-              </div>
+              {/* No sensors message */}
+              {telemetry.power.sensors.length === 0 && (
+                <div className="flex items-center justify-center text-gray-500 text-sm">
+                  No sensor data (using mock values)
+                </div>
+              )}
             </div>
           </div>
 

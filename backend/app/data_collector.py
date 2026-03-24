@@ -1,4 +1,5 @@
 import math
+import os
 import random
 import time
 from datetime import datetime
@@ -12,11 +13,17 @@ from app.models import (
     MotorsData,
     MotorStatus,
     PowerData,
+    SensorReading,
     SensorsData,
     SystemData,
     SystemHealthStatus,
     TelemetryData,
 )
+from app.power_state import power_state
+
+# Battery voltage thresholds for percentage calculation (configurable via env vars)
+BATTERY_V_MAX = float(os.getenv("BATTERY_V_MAX", "26.0"))
+BATTERY_V_MIN = float(os.getenv("BATTERY_V_MIN", "20.0"))
 
 
 class DataCollector:
@@ -359,33 +366,42 @@ class DataCollector:
 
     def _generate_power(self, current_time: float, motors: MotorsData) -> PowerData:
         """Generate power system data."""
-        # Try to get real power data from MCU
-        from app.main import real_power_data
+        power_update = power_state.get_sync()
 
-        if real_power_data and real_power_data.get('healthy'):
-            # Use REAL data from Power MCU
-            battery_voltage = real_power_data['voltage']
-            current_draw = real_power_data['current']
+        if power_update is not None:
+            # Use real MCU data - first healthy sensor for voltage, sum currents
+            battery_voltage = 0.0
+            total_current = 0.0
+            healthy_count = 0
+            
+            for sensor in power_update.sensors:
+                if sensor.healthy:
+                    if healthy_count == 0:
+                        battery_voltage = sensor.voltage
+                    total_current += sensor.current
+                    healthy_count += 1
+            
+            if healthy_count > 0:
+                # Calculate battery percentage from voltage
+                if battery_voltage >= BATTERY_V_MAX:
+                    battery_percentage = 100.0
+                elif battery_voltage <= BATTERY_V_MIN:
+                    battery_percentage = 0.0
+                else:
+                    battery_percentage = ((battery_voltage - BATTERY_V_MIN) / (BATTERY_V_MAX - BATTERY_V_MIN)) * 100.0
 
-            # Calculate battery percentage from voltage (simple linear approximation)
-            # TODO: Adjust V_MAX and V_MIN based on actual battery
-            V_MAX = 26.0  # Adjust for your battery
-            V_MIN = 20.0  # Adjust for your battery
+                return PowerData(
+                    battery_percentage=battery_percentage,
+                    battery_voltage=battery_voltage,
+                    current_draw=total_current,
+                    sensors=list(power_update.sensors),
+                    is_stale=False,
+                )
 
-            if battery_voltage >= V_MAX:
-                battery_percentage = 100.0
-            elif battery_voltage <= V_MIN:
-                battery_percentage = 0.0
-            else:
-                battery_percentage = ((battery_voltage - V_MIN) / (V_MAX - V_MIN)) * 100.0
+        # Check if we have stale data
+        is_stale = power_state.is_stale() and power_state.last_update_time > 0
 
-            return PowerData(
-                battery_percentage=battery_percentage,
-                battery_voltage=battery_voltage,
-                current_draw=current_draw,
-            )
-
-        # Fallback to MOCK data if no real data available
+        # Fallback to mock data
         elapsed = current_time - self._start_time
         depletion = elapsed * 0.01
         self._battery_percentage = 100.0 - depletion
@@ -410,6 +426,8 @@ class DataCollector:
             battery_percentage=self._battery_percentage,
             battery_voltage=battery_voltage,
             current_draw=current_draw,
+            sensors=[],
+            is_stale=is_stale,
         )
 
     def _generate_system(self, current_time: float, motors: MotorsData) -> SystemData:

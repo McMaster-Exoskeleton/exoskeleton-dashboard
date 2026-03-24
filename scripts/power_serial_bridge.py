@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Serial-to-Backend Bridge for Power MCU Data
-Reads power telemetry from STM32 via UART and updates the backend.
+Reads power telemetry from STM32 via UART (5 INA228 sensors) and updates the backend.
 """
 
 import serial
@@ -9,6 +9,34 @@ import json
 import time
 import sys
 import requests
+
+# Number of INA228 sensors
+NUM_SENSORS = 5
+
+
+def transform_mcu_data(raw_data: dict) -> dict:
+    """Transform raw MCU data to API format."""
+    # If already in new format, just ensure healthy is bool
+    if "sensors" in raw_data:
+        for sensor in raw_data["sensors"]:
+            if isinstance(sensor.get("healthy"), int):
+                sensor["healthy"] = bool(sensor["healthy"])
+        return raw_data
+    
+    # Transform legacy flat format to new format
+    sensors = []
+    for i in range(1, NUM_SENSORS + 1):
+        suffix = "" if i == 1 else str(i)
+        sensor = {
+            "voltage": raw_data.get(f"voltage{suffix}", raw_data.get(f"voltage{i}", 0.0)),
+            "current": raw_data.get(f"current{suffix}", raw_data.get(f"current{i}", 0.0)),
+            "power": raw_data.get(f"power{suffix}", raw_data.get(f"power{i}", 0.0)),
+            "healthy": bool(raw_data.get(f"healthy{suffix}", raw_data.get(f"healthy{i}", 0))),
+        }
+        sensors.append(sensor)
+    
+    return {"sensors": sensors}
+
 
 class PowerSerialBridge:
     def __init__(self, serial_port: str, backend_url: str = "http://localhost:8000", baudrate: int = 115200):
@@ -65,12 +93,20 @@ class PowerSerialBridge:
             # Backend not available - continue silently
             return False
 
+    def format_sensor_display(self, sensors: list) -> str:
+        """Format sensor data for console display."""
+        parts = []
+        for i, s in enumerate(sensors, 1):
+            healthy = "✓" if s["healthy"] else "✗"
+            parts.append(f"S{i}: {s['voltage']:.1f}V {s['current']:.2f}A [{healthy}]")
+        return " | ".join(parts)
+
     def run(self):
         """Main loop - read serial and update backend"""
         if not self.connect_serial():
             return
 
-        print(f"Reading power data and forwarding to {self.backend_url}")
+        print(f"Reading power data from {NUM_SENSORS} sensors and forwarding to {self.backend_url}")
         print("Press Ctrl+C to stop\n")
 
         update_count = 0
@@ -78,13 +114,16 @@ class PowerSerialBridge:
 
         try:
             while True:
-                power_data = self.read_and_parse()
-                if power_data:
+                raw_data = self.read_and_parse()
+                if raw_data:
                     update_count += 1
+                    
+                    # Transform to API format
+                    power_data = transform_mcu_data(raw_data)
 
                     # Display formatted output
-                    print(f"[{update_count}] Sensor1: {power_data['voltage']:.2f}V {power_data['current']:.3f}A {power_data['power']:.2f}W [H:{power_data['healthy']}] | "
-                          f"Sensor2: {power_data['voltage2']:.2f}V {power_data['current2']:.3f}A {power_data['power2']:.2f}W [H:{power_data['healthy2']}]", end='')
+                    display = self.format_sensor_display(power_data["sensors"])
+                    print(f"[{update_count}] {display}", end='')
 
                     # Update backend
                     if self.update_backend(power_data):
@@ -106,12 +145,13 @@ class PowerSerialBridge:
                 self.ser.close()
                 print("✓ Serial port closed")
 
+
 def main():
     # Parse command line arguments
     port = sys.argv[1] if len(sys.argv) > 1 else '/dev/ttyUSB0'
     backend = sys.argv[2] if len(sys.argv) > 2 else 'http://localhost:8000'
 
-    print(f"Power MCU Serial Bridge")
+    print(f"Power MCU Serial Bridge (5 INA228 sensors)")
     print(f"Port: {port}")
     print(f"Backend: {backend}")
     print(f"Baud: 115200\n")
