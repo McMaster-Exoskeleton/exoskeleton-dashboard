@@ -64,6 +64,13 @@ export interface PowerData {
     current_draw: number;
     sensors: SensorReading[];
     is_stale: boolean;
+    relay1: boolean;
+    relay2: boolean;
+    relay3: boolean;
+    relay4: boolean;
+    relay5: boolean;
+    relay6: boolean;
+    relay7: boolean;
 }
 
 export interface SystemData {

@@ -97,6 +97,13 @@ class PowerData(BaseModel):
         default_factory=list, description="Raw readings from INA228 sensors (empty if using mock data)"
     )
     is_stale: bool = Field(default=False, description="True if sensor data is stale")
+    relay1: bool = Field(default=False, description="Relay 1 state")
+    relay2: bool = Field(default=False, description="Relay 2 state")
+    relay3: bool = Field(default=False, description="Relay 3 state")
+    relay4: bool = Field(default=False, description="Relay 4 state")
+    relay5: bool = Field(default=False, description="Relay 5 state")
+    relay6: bool = Field(default=False, description="Relay 6 state")
+    relay7: bool = Field(default=False, description="Relay 7 state")
 
 
 class PowerUpdate(BaseModel):
@@ -108,6 +115,13 @@ class PowerUpdate(BaseModel):
         max_length=5,
         description="Readings from 5 INA228 power sensors"
     )
+    relay1: bool = Field(default=False, description="Relay 1 state")
+    relay2: bool = Field(default=False, description="Relay 2 state")
+    relay3: bool = Field(default=False, description="Relay 3 state")
+    relay4: bool = Field(default=False, description="Relay 4 state")
+    relay5: bool = Field(default=False, description="Relay 5 state")
+    relay6: bool = Field(default=False, description="Relay 6 state")
+    relay7: bool = Field(default=False, description="Relay 7 state")
 
 
 class SystemData(BaseModel):

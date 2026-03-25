@@ -396,6 +396,13 @@ class DataCollector:
                     current_draw=total_current,
                     sensors=list(power_update.sensors),
                     is_stale=False,
+                    relay1=power_update.relay1,
+                    relay2=power_update.relay2,
+                    relay3=power_update.relay3,
+                    relay4=power_update.relay4,
+                    relay5=power_update.relay5,
+                    relay6=power_update.relay6,
+                    relay7=power_update.relay7,
                 )
 
         # Check if we have stale data
@@ -428,6 +435,13 @@ class DataCollector:
             current_draw=current_draw,
             sensors=[],
             is_stale=is_stale,
+            relay1=False,
+            relay2=False,
+            relay3=False,
+            relay4=False,
+            relay5=False,
+            relay6=False,
+            relay7=False,
         )
 
     def _generate_system(self, current_time: float, motors: MotorsData) -> SystemData:
