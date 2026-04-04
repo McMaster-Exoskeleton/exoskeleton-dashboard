@@ -56,6 +56,11 @@ export interface SensorsData {
     right_knee: IMUData;
 }
 
+export interface SensorReading {
+    voltage: number;
+    current: number;
+    power: number;
+    healthy: boolean;
 export interface Ina228Data {
     voltage: number;
     current: number;
@@ -101,6 +106,15 @@ export interface PowerData {
     battery_percentage: number;
     battery_voltage: number;
     current_draw: number;
+    sensors: SensorReading[];
+    is_stale: boolean;
+    relay1: boolean;
+    relay2: boolean;
+    relay3: boolean;
+    relay4: boolean;
+    relay5: boolean;
+    relay6: boolean;
+    relay7: boolean;
 }
 
 export interface SystemData {

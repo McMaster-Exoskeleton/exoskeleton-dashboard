@@ -103,6 +103,13 @@ class SensorsData(BaseModel):
     right_knee: IMUData
 
 
+class SensorReading(BaseModel):
+    """Reading from a single INA228 power sensor."""
+
+    voltage: float = Field(..., ge=0, description="Voltage in Volts")
+    current: float = Field(..., description="Current in Amperes")
+    power: float = Field(..., ge=0, description="Power in Watts")
+    healthy: bool = Field(..., description="Sensor health flag")
 class Ina228Data(BaseModel):
     """Telemetry data for a single INA228 sensor."""
 
@@ -147,6 +154,35 @@ class PowerData(BaseModel):
     )
     battery_voltage: float = Field(..., description="Battery voltage in Volts")
     current_draw: float = Field(..., description="Total current draw in Amperes")
+    sensors: List[SensorReading] = Field(
+        default_factory=list, description="Raw readings from INA228 sensors (empty if using mock data)"
+    )
+    is_stale: bool = Field(default=False, description="True if sensor data is stale")
+    relay1: bool = Field(default=False, description="Relay 1 state")
+    relay2: bool = Field(default=False, description="Relay 2 state")
+    relay3: bool = Field(default=False, description="Relay 3 state")
+    relay4: bool = Field(default=False, description="Relay 4 state")
+    relay5: bool = Field(default=False, description="Relay 5 state")
+    relay6: bool = Field(default=False, description="Relay 6 state")
+    relay7: bool = Field(default=False, description="Relay 7 state")
+
+
+class PowerUpdate(BaseModel):
+    """Power data received from MCU via serial bridge (5 INA228 sensors)."""
+
+    sensors: List[SensorReading] = Field(
+        ...,
+        min_length=5,
+        max_length=5,
+        description="Readings from 5 INA228 power sensors"
+    )
+    relay1: bool = Field(default=False, description="Relay 1 state")
+    relay2: bool = Field(default=False, description="Relay 2 state")
+    relay3: bool = Field(default=False, description="Relay 3 state")
+    relay4: bool = Field(default=False, description="Relay 4 state")
+    relay5: bool = Field(default=False, description="Relay 5 state")
+    relay6: bool = Field(default=False, description="Relay 6 state")
+    relay7: bool = Field(default=False, description="Relay 7 state")
 
 
 class SystemData(BaseModel):

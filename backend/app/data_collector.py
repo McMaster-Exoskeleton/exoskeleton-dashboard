@@ -1,4 +1,5 @@
 import math
+import os
 import random
 import time
 from datetime import datetime
@@ -19,12 +20,18 @@ from app.models import (
     MotorsData,
     MotorStatus,
     PowerData,
+    SensorReading,
     SensorsData,
     AlertsData,
     SystemData,
     SystemHealthStatus,
     TelemetryData,
 )
+from app.power_state import power_state
+
+# Battery voltage thresholds for percentage calculation (configurable via env vars)
+BATTERY_V_MAX = float(os.getenv("BATTERY_V_MAX", "26.0"))
+BATTERY_V_MIN = float(os.getenv("BATTERY_V_MIN", "20.0"))
 from app.thresholds import MetricThresholds, ThresholdsConfig, load_thresholds
 
 
@@ -399,9 +406,51 @@ class DataCollector:
 
     def _generate_power(self, current_time: float, motors: MotorsData) -> PowerData:
         """Generate power system data."""
-        # Battery depletes over time (~0.01%/sec), wraps to 100 at 20%
+        power_update = power_state.get_sync()
+
+        if power_update is not None:
+            # Use real MCU data - first healthy sensor for voltage, sum currents
+            battery_voltage = 0.0
+            total_current = 0.0
+            healthy_count = 0
+            
+            for sensor in power_update.sensors:
+                if sensor.healthy:
+                    if healthy_count == 0:
+                        battery_voltage = sensor.voltage
+                    total_current += sensor.current
+                    healthy_count += 1
+            
+            if healthy_count > 0:
+                # Calculate battery percentage from voltage
+                if battery_voltage >= BATTERY_V_MAX:
+                    battery_percentage = 100.0
+                elif battery_voltage <= BATTERY_V_MIN:
+                    battery_percentage = 0.0
+                else:
+                    battery_percentage = ((battery_voltage - BATTERY_V_MIN) / (BATTERY_V_MAX - BATTERY_V_MIN)) * 100.0
+
+                return PowerData(
+                    battery_percentage=battery_percentage,
+                    battery_voltage=battery_voltage,
+                    current_draw=total_current,
+                    sensors=list(power_update.sensors),
+                    is_stale=False,
+                    relay1=power_update.relay1,
+                    relay2=power_update.relay2,
+                    relay3=power_update.relay3,
+                    relay4=power_update.relay4,
+                    relay5=power_update.relay5,
+                    relay6=power_update.relay6,
+                    relay7=power_update.relay7,
+                )
+
+        # Check if we have stale data
+        is_stale = power_state.is_stale() and power_state.last_update_time > 0
+
+        # Fallback to mock data
         elapsed = current_time - self._start_time
-        depletion = elapsed * 0.01  
+        depletion = elapsed * 0.01
         self._battery_percentage = 100.0 - depletion
 
         if self._battery_percentage <= 20.0:
@@ -424,6 +473,15 @@ class DataCollector:
             battery_percentage=self._battery_percentage,
             battery_voltage=battery_voltage,
             current_draw=current_draw,
+            sensors=[],
+            is_stale=is_stale,
+            relay1=False,
+            relay2=False,
+            relay3=False,
+            relay4=False,
+            relay5=False,
+            relay6=False,
+            relay7=False,
         )
 
     def _generate_system(self, current_time: float, motors: MotorsData) -> SystemData:

@@ -3,6 +3,8 @@ import logging
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.models import PowerUpdate
+from app.power_state import power_state
 from app.websocket import websocket_endpoint
 
 # ---------------------------------------------------------------------------
@@ -39,6 +41,13 @@ app.add_middleware(
 async def health_check():
     """Health check endpoint to verify the server is running."""
     return {"status": "healthy", "service": "exoskeleton-telemetry"}
+
+
+@app.post("/power/update")
+async def update_power(data: PowerUpdate):
+    """Receive real-time power data from MCU via serial bridge."""
+    await power_state.update(data)
+    return {"status": "ok"}
 
 
 @app.websocket("/ws")
