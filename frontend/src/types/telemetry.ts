@@ -61,6 +61,8 @@ export interface SensorReading {
     current: number;
     power: number;
     healthy: boolean;
+}
+
 export interface Ina228Data {
     voltage: number;
     current: number;

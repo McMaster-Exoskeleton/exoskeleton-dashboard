@@ -185,6 +185,19 @@ class PowerUpdate(BaseModel):
     relay7: bool = Field(default=False, description="Relay 7 state")
 
 
+class IMUUpdate(BaseModel):
+    """IMU data received from a single MCU."""
+
+    joint: str = Field(..., description="Joint name (left_hip, left_knee, right_hip, right_knee)")
+    acceleration: List[float] = Field(
+        ..., min_length=3, max_length=3, description="Accelerometer [x, y, z] (raw sensor units)"
+    )
+    gyroscope: List[float] = Field(
+        ..., min_length=3, max_length=3, description="Gyroscope [x, y, z] (raw sensor units)"
+    )
+    timestamp: float = Field(..., description="MCU timestamp (epoch ms)")
+
+
 class SystemData(BaseModel):
     """System health and status data."""
 

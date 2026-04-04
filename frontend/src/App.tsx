@@ -145,7 +145,7 @@ function App() {
       )}
 
       {telemetry && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* System Status Section */}
           <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
             <h2 className="text-xl font-bold mb-4 text-blue-400">System Status</h2>
@@ -200,7 +200,7 @@ function App() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
               {/* Battery Summary */}
               <div className="space-y-3">
                 <div className="flex justify-between">
@@ -260,17 +260,119 @@ function App() {
                 </div>
               )}
 
-              {/* No sensors message */}
-              {telemetry.power.sensors.length === 0 && (
-                <div className="flex items-center justify-center text-gray-500 text-sm">
-                  No sensor data (using mock values)
+              {/* Relay Status */}
+              <div className="space-y-2">
+                <div className="text-sm text-gray-400 mb-2">Relay Status:</div>
+                <div className="grid grid-cols-7 gap-2">
+                  {([1, 2, 3, 4, 5, 6, 7] as const).map((num) => {
+                    const key = `relay${num}` as keyof typeof telemetry.power;
+                    const active = telemetry.power[key] as boolean;
+                    return (
+                      <div
+                        key={num}
+                        className={`flex items-center justify-center gap-1.5 p-2 rounded text-sm ${
+                          active ? 'bg-green-900/30 border border-green-500' : 'bg-gray-700/50'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block w-2 h-2 rounded-full ${
+                            active ? 'bg-green-400' : 'bg-gray-500'
+                          }`}
+                        />
+                        <span className={active ? 'text-green-400' : 'text-gray-500'}>
+                          R{num}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
+            </div>
+          </div>
+
+          {/* INA228 Sensors Section */}
+          <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 lg:col-span-3">
+            <h2 className="text-xl font-bold mb-4 text-blue-400">INA228 Sensors</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              {JOINT_NAMES.map((jointName: JointName) => {
+                const sensor = telemetry.ina228[jointName];
+                const sensorAlerts = telemetry.alerts.ina228[jointName];
+                return (
+                  <div key={jointName} className="bg-gray-700/50 p-4 rounded border border-gray-600">
+                    <h3 className="font-semibold text-emerald-400 mb-3 capitalize">
+                      {jointName.replace('_', ' ')}
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Voltage:</span>
+                        <span className={`font-mono ${getAlertColor(sensorAlerts.voltage)}`}>
+                          {sensor.voltage.toFixed(2)} V
+                          {renderAlertBadge(sensorAlerts.voltage)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Current:</span>
+                        <span className={`font-mono ${getAlertColor(sensorAlerts.current)}`}>
+                          {sensor.current.toFixed(2)} A
+                          {renderAlertBadge(sensorAlerts.current)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* IMU Sensors Section */}
+          <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 lg:col-span-3">
+            <h2 className="text-xl font-bold mb-4 text-blue-400">IMU Sensors</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              {JOINT_NAMES.map((jointName: JointName) => {
+                const imu = telemetry.sensors[jointName];
+                return (
+                  <div key={jointName} className="bg-gray-700/50 p-4 rounded border border-gray-600">
+                    <h3 className="font-semibold text-orange-400 mb-3 capitalize">
+                      {jointName.replace('_', ' ')}
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="text-gray-400 text-xs uppercase tracking-wide mb-1">Accelerometer</div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">X:</span>
+                        <span className="font-mono">{imu.acceleration[0].toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Y:</span>
+                        <span className="font-mono">{imu.acceleration[1].toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Z:</span>
+                        <span className="font-mono">{imu.acceleration[2].toFixed(2)}</span>
+                      </div>
+                      <div className="text-gray-400 text-xs uppercase tracking-wide mb-1 mt-3">Gyroscope</div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">X:</span>
+                        <span className="font-mono">{imu.gyroscope[0].toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Y:</span>
+                        <span className="font-mono">{imu.gyroscope[1].toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Z:</span>
+                        <span className="font-mono">{imu.gyroscope[2].toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           {/* Joints Section */}
-          <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 lg:col-span-2">
+          <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 lg:col-span-3">
             <h2 className="text-xl font-bold mb-4 text-blue-400">Joint Telemetry</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -302,7 +404,7 @@ function App() {
           </div>
 
           {/* Motors Section */}
-          <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 lg:col-span-2">
+          <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 lg:col-span-3">
             <h2 className="text-xl font-bold mb-4 text-blue-400">Motor Status</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -333,41 +435,6 @@ function App() {
                         <span className={`font-mono ${getAlertColor(motorAlerts.current)}`}>
                           {motor.current.toFixed(2)} A
                           {renderAlertBadge(motorAlerts.current)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* INA228 Sensors Section */}
-          <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 lg:col-span-2">
-            <h2 className="text-xl font-bold mb-4 text-blue-400">INA228 Sensors</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-              {JOINT_NAMES.map((jointName: JointName) => {
-                const sensor = telemetry.ina228[jointName];
-                const sensorAlerts = telemetry.alerts.ina228[jointName];
-                return (
-                  <div key={jointName} className="bg-gray-700/50 p-4 rounded border border-gray-600">
-                    <h3 className="font-semibold text-emerald-400 mb-3 capitalize">
-                      {jointName.replace('_', ' ')}
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Voltage:</span>
-                        <span className={`font-mono ${getAlertColor(sensorAlerts.voltage)}`}>
-                          {sensor.voltage.toFixed(2)} V
-                          {renderAlertBadge(sensorAlerts.voltage)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Current:</span>
-                        <span className={`font-mono ${getAlertColor(sensorAlerts.current)}`}>
-                          {sensor.current.toFixed(2)} A
-                          {renderAlertBadge(sensorAlerts.current)}
                         </span>
                       </div>
                     </div>

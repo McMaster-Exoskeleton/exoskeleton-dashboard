@@ -27,6 +27,7 @@ from app.models import (
     SystemHealthStatus,
     TelemetryData,
 )
+from app.imu_state import imu_state
 from app.power_state import power_state
 
 # Battery voltage thresholds for percentage calculation (configurable via env vars)
@@ -347,9 +348,7 @@ class DataCollector:
         )
 
     def _generate_sensors(self, joints: JointsData) -> SensorsData:
-        """Generate IMU sensor data correlated with joint movement."""
-        # Gyroscope correlated with joint velocities
-        # Acceleration includes gravity (~-9.8 m/s² on y-axis)
+        """Generate IMU sensor data. Uses real MCU data when available, falls back to mock."""
         sensors_dict = {}
 
         joint_vels = {
@@ -360,20 +359,24 @@ class DataCollector:
         }
 
         for joint_name, vel in joint_vels.items():
-            # Gyroscope: correlated with joint velocity
-            gyr_x = self._clamp(vel * 0.3 + self._noise(0.1), -1.0, 1.0)
-            gyr_y = self._clamp(vel * 0.2 + self._noise(0.1), -1.0, 1.0)
-            gyr_z = self._clamp(vel * 0.25 + self._noise(0.1), -1.0, 1.0)
+            # Try real IMU data first
+            real_imu = imu_state.get_sync(joint_name)
+            if real_imu is not None:
+                sensors_dict[joint_name] = real_imu
+            else:
+                # Mock data fallback
+                gyr_x = self._clamp(vel * 0.3 + self._noise(0.1), -1.0, 1.0)
+                gyr_y = self._clamp(vel * 0.2 + self._noise(0.1), -1.0, 1.0)
+                gyr_z = self._clamp(vel * 0.25 + self._noise(0.1), -1.0, 1.0)
 
-            # Acceleration: includes gravity on y-axis
-            acc_x = self._clamp(self._noise(0.5), -2.0, 2.0)
-            acc_y = self._clamp(-9.8 + self._noise(0.3), -11.0, -8.0)
-            acc_z = self._clamp(self._noise(0.5), -2.0, 2.0)
+                acc_x = self._clamp(self._noise(0.5), -2.0, 2.0)
+                acc_y = self._clamp(-9.8 + self._noise(0.3), -11.0, -8.0)
+                acc_z = self._clamp(self._noise(0.5), -2.0, 2.0)
 
-            sensors_dict[joint_name] = IMUData(
-                acceleration=[acc_x, acc_y, acc_z],
-                gyroscope=[gyr_x, gyr_y, gyr_z],
-            )
+                sensors_dict[joint_name] = IMUData(
+                    acceleration=[acc_x, acc_y, acc_z],
+                    gyroscope=[gyr_x, gyr_y, gyr_z],
+                )
 
         return SensorsData(
             left_hip=sensors_dict["left_hip"],

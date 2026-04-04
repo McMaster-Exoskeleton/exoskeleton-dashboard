@@ -3,7 +3,8 @@ import logging
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.models import PowerUpdate
+from app.models import IMUUpdate, PowerUpdate
+from app.imu_state import imu_state
 from app.power_state import power_state
 from app.websocket import websocket_endpoint
 
@@ -47,6 +48,13 @@ async def health_check():
 async def update_power(data: PowerUpdate):
     """Receive real-time power data from MCU via serial bridge."""
     await power_state.update(data)
+    return {"status": "ok"}
+
+
+@app.post("/imu/update")
+async def update_imu(data: IMUUpdate):
+    """Receive real-time IMU data from a single MCU."""
+    await imu_state.update(data)
     return {"status": "ok"}
 
 
