@@ -13,6 +13,11 @@ export enum SystemHealthStatus {
     Critical = 'critical',
 }
 
+export enum AlertSeverity {
+    Warning = 'warning',
+    Critical = 'critical',
+}
+
 export interface JointData {
     position: number;
     velocity: number;
@@ -51,6 +56,47 @@ export interface SensorsData {
     right_knee: IMUData;
 }
 
+export interface Ina228Data {
+    voltage: number;
+    current: number;
+}
+
+export interface Ina228SensorsData {
+    left_hip: Ina228Data;
+    left_knee: Ina228Data;
+    right_hip: Ina228Data;
+    right_knee: Ina228Data;
+}
+
+export interface MotorAlertData {
+    temperature?: AlertSeverity;
+    current?: AlertSeverity;
+}
+
+export interface MotorsAlertsData {
+    left_hip: MotorAlertData;
+    left_knee: MotorAlertData;
+    right_hip: MotorAlertData;
+    right_knee: MotorAlertData;
+}
+
+export interface Ina228AlertData {
+    voltage?: AlertSeverity;
+    current?: AlertSeverity;
+}
+
+export interface Ina228AlertsData {
+    left_hip: Ina228AlertData;
+    left_knee: Ina228AlertData;
+    right_hip: Ina228AlertData;
+    right_knee: Ina228AlertData;
+}
+
+export interface AlertsData {
+    motors: MotorsAlertsData;
+    ina228: Ina228AlertsData;
+}
+
 export interface PowerData {
     battery_percentage: number;
     battery_voltage: number;
@@ -70,8 +116,10 @@ export interface TelemetryData {
     joints: JointsData;
     motors: MotorsData;
     sensors: SensorsData;
+    ina228: Ina228SensorsData;
     power: PowerData;
     system: SystemData;
+    alerts: AlertsData;
 }
 
 export type JointName = 'left_hip' | 'left_knee' | 'right_hip' | 'right_knee';
