@@ -63,6 +63,27 @@ WS /ws
 
 Streams real-time telemetry data.
 
+## Threshold Configuration
+
+Alert thresholds can be overridden via environment variables:
+
+- `THRESHOLDS_JSON`: JSON string with threshold values.
+- `THRESHOLDS_PATH`: Path to a JSON file with threshold values.
+
+Example JSON:
+```json
+{
+  "motors": {
+    "temperature": { "warning": 50, "critical": 60 },
+    "current": { "warning": 10, "critical": 13 }
+  },
+  "ina228": {
+    "voltage": { "warning": 27, "critical": 29 },
+    "current": { "warning": 8, "critical": 12 }
+  }
+}
+```
+
 ## Development
 
 ### Code Formatting

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useWebSocket } from './hooks/useWebSocket';
-import { JointName, JOINT_NAMES } from './types/telemetry';
+import { AlertSeverity, JointName, JOINT_NAMES } from './types/telemetry';
 
 function App() {
   // Get WebSocket URL from environment variable or use default
@@ -73,6 +73,26 @@ function App() {
     if (percentage > 50) return 'text-green-400';
     if (percentage > 20) return 'text-yellow-400';
     return 'text-red-400';
+  };
+
+  const getAlertColor = (severity?: AlertSeverity) => {
+    if (severity === AlertSeverity.Critical) return 'text-red-400';
+    if (severity === AlertSeverity.Warning) return 'text-yellow-400';
+    return '';
+  };
+
+  const renderAlertBadge = (severity?: AlertSeverity) => {
+    if (!severity) return null;
+    const badgeClass =
+      severity === AlertSeverity.Critical
+        ? 'border-red-500/60 bg-red-500/20 text-red-300'
+        : 'border-yellow-500/60 bg-yellow-500/20 text-yellow-300';
+    const label = severity === AlertSeverity.Critical ? 'CRIT' : 'WARN';
+    return (
+      <span className={`ml-2 rounded border px-1.5 py-0.5 text-[10px] font-semibold ${badgeClass}`}>
+        {label}
+      </span>
+    );
   };
 
   return (
@@ -288,6 +308,7 @@ function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               {JOINT_NAMES.map((jointName: JointName) => {
                 const motor = telemetry.motors[jointName];
+                const motorAlerts = telemetry.alerts.motors[jointName];
                 return (
                   <div key={jointName} className="bg-gray-700/50 p-4 rounded border border-gray-600">
                     <h3 className="font-semibold text-purple-400 mb-3 capitalize">
@@ -302,13 +323,52 @@ function App() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-400">Temperature:</span>
-                        <span className={`font-mono ${motor.temperature > 60 ? 'text-red-400' : motor.temperature > 50 ? 'text-yellow-400' : ''}`}>
+                        <span className={`font-mono ${getAlertColor(motorAlerts.temperature)}`}>
                           {motor.temperature.toFixed(1)} °C
+                          {renderAlertBadge(motorAlerts.temperature)}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-400">Current:</span>
-                        <span className="font-mono">{motor.current.toFixed(2)} A</span>
+                        <span className={`font-mono ${getAlertColor(motorAlerts.current)}`}>
+                          {motor.current.toFixed(2)} A
+                          {renderAlertBadge(motorAlerts.current)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* INA228 Sensors Section */}
+          <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 lg:col-span-2">
+            <h2 className="text-xl font-bold mb-4 text-blue-400">INA228 Sensors</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              {JOINT_NAMES.map((jointName: JointName) => {
+                const sensor = telemetry.ina228[jointName];
+                const sensorAlerts = telemetry.alerts.ina228[jointName];
+                return (
+                  <div key={jointName} className="bg-gray-700/50 p-4 rounded border border-gray-600">
+                    <h3 className="font-semibold text-emerald-400 mb-3 capitalize">
+                      {jointName.replace('_', ' ')}
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Voltage:</span>
+                        <span className={`font-mono ${getAlertColor(sensorAlerts.voltage)}`}>
+                          {sensor.voltage.toFixed(2)} V
+                          {renderAlertBadge(sensorAlerts.voltage)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Current:</span>
+                        <span className={`font-mono ${getAlertColor(sensorAlerts.current)}`}>
+                          {sensor.current.toFixed(2)} A
+                          {renderAlertBadge(sensorAlerts.current)}
+                        </span>
                       </div>
                     </div>
                   </div>

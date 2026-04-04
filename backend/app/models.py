@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -19,6 +19,13 @@ class SystemHealthStatus(str, Enum):
 
     HEALTHY = "healthy"
     DEGRADED = "degraded"
+    CRITICAL = "critical"
+
+
+class AlertSeverity(str, Enum):
+    """Alert severity levels."""
+
+    WARNING = "warning"
     CRITICAL = "critical"
 
 
@@ -56,6 +63,26 @@ class MotorsData(BaseModel):
     right_knee: MotorData
 
 
+class MotorAlertData(BaseModel):
+    """Alert state for a motor's metrics."""
+
+    temperature: Optional[AlertSeverity] = Field(
+        default=None, description="Alert severity for motor temperature"
+    )
+    current: Optional[AlertSeverity] = Field(
+        default=None, description="Alert severity for motor current"
+    )
+
+
+class MotorsAlertsData(BaseModel):
+    """Alert states for all motors."""
+
+    left_hip: MotorAlertData
+    left_knee: MotorAlertData
+    right_hip: MotorAlertData
+    right_knee: MotorAlertData
+
+
 class IMUData(BaseModel):
     """Telemetry data for a single IMU sensor."""
 
@@ -83,6 +110,40 @@ class SensorReading(BaseModel):
     current: float = Field(..., description="Current in Amperes")
     power: float = Field(..., ge=0, description="Power in Watts")
     healthy: bool = Field(..., description="Sensor health flag")
+class Ina228Data(BaseModel):
+    """Telemetry data for a single INA228 sensor."""
+
+    voltage: float = Field(..., description="Bus voltage in Volts")
+    current: float = Field(..., description="Current in Amperes")
+
+
+class Ina228SensorsData(BaseModel):
+    """Telemetry data for all INA228 sensors."""
+
+    left_hip: Ina228Data
+    left_knee: Ina228Data
+    right_hip: Ina228Data
+    right_knee: Ina228Data
+
+
+class Ina228AlertData(BaseModel):
+    """Alert state for a single INA228 sensor."""
+
+    voltage: Optional[AlertSeverity] = Field(
+        default=None, description="Alert severity for sensor voltage"
+    )
+    current: Optional[AlertSeverity] = Field(
+        default=None, description="Alert severity for sensor current"
+    )
+
+
+class Ina228AlertsData(BaseModel):
+    """Alert states for all INA228 sensors."""
+
+    left_hip: Ina228AlertData
+    left_knee: Ina228AlertData
+    right_hip: Ina228AlertData
+    right_knee: Ina228AlertData
 
 
 class PowerData(BaseModel):
@@ -135,6 +196,13 @@ class SystemData(BaseModel):
     uptime_seconds: float = Field(..., description="System uptime in seconds")
 
 
+class AlertsData(BaseModel):
+    """Alert state payload for telemetry."""
+
+    motors: MotorsAlertsData
+    ina228: Ina228AlertsData
+
+
 class TelemetryData(BaseModel):
     """Complete telemetry data packet sent over WebSocket."""
 
@@ -143,8 +211,10 @@ class TelemetryData(BaseModel):
     joints: JointsData
     motors: MotorsData
     sensors: SensorsData
+    ina228: Ina228SensorsData
     power: PowerData
     system: SystemData
+    alerts: AlertsData
 
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat()}

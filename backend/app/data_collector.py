@@ -3,18 +3,26 @@ import os
 import random
 import time
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from app.models import (
+    AlertSeverity,
     IMUData,
+    Ina228AlertData,
+    Ina228AlertsData,
+    Ina228Data,
+    Ina228SensorsData,
     JointData,
     JointsData,
+    MotorAlertData,
+    MotorsAlertsData,
     MotorData,
     MotorsData,
     MotorStatus,
     PowerData,
     SensorReading,
     SensorsData,
+    AlertsData,
     SystemData,
     SystemHealthStatus,
     TelemetryData,
@@ -24,6 +32,7 @@ from app.power_state import power_state
 # Battery voltage thresholds for percentage calculation (configurable via env vars)
 BATTERY_V_MAX = float(os.getenv("BATTERY_V_MAX", "26.0"))
 BATTERY_V_MIN = float(os.getenv("BATTERY_V_MIN", "20.0"))
+from app.thresholds import MetricThresholds, ThresholdsConfig, load_thresholds
 
 
 class DataCollector:
@@ -63,6 +72,7 @@ class DataCollector:
 
         # Battery tracking
         self._battery_percentage = 100.0
+        self._thresholds: ThresholdsConfig = load_thresholds()
 
         # Random mode state (smooth random walk)
         self._random_positions = {
@@ -101,11 +111,17 @@ class DataCollector:
         # Generate sensor data (correlated with joint movement)
         sensors = self._generate_sensors(joints)
 
+        # Generate INA228 sensor data (correlated with motor currents)
+        ina228 = self._generate_ina228_sensors(motors)
+
         # Generate power data
         power = self._generate_power(current_time, motors)
 
         # Generate system data
         system = self._generate_system(current_time, motors)
+
+        # Evaluate alerts based on thresholds
+        alerts = self._evaluate_alerts(motors, ina228)
 
         # Create telemetry packet
         telemetry = TelemetryData(
@@ -114,8 +130,10 @@ class DataCollector:
             joints=joints,
             motors=motors,
             sensors=sensors,
+            ina228=ina228,
             power=power,
             system=system,
+            alerts=alerts,
         )
 
         self._sequence += 1
@@ -364,6 +382,28 @@ class DataCollector:
             right_knee=sensors_dict["right_knee"],
         )
 
+    def _generate_ina228_sensors(self, motors: MotorsData) -> Ina228SensorsData:
+        """Generate INA228 sensor data correlated with motor currents."""
+        motor_map = {
+            "left_hip": motors.left_hip,
+            "right_hip": motors.right_hip,
+            "left_knee": motors.left_knee,
+            "right_knee": motors.right_knee,
+        }
+
+        sensors = {}
+        for joint_name, motor in motor_map.items():
+            current = self._clamp(motor.current + self._noise(0.4), 0.2, 20.0)
+            voltage = self._clamp(24.0 - current * 0.05 + self._noise(0.2), 20.0, 30.0)
+            sensors[joint_name] = Ina228Data(voltage=voltage, current=current)
+
+        return Ina228SensorsData(
+            left_hip=sensors["left_hip"],
+            right_hip=sensors["right_hip"],
+            left_knee=sensors["left_knee"],
+            right_knee=sensors["right_knee"],
+        )
+
     def _generate_power(self, current_time: float, motors: MotorsData) -> PowerData:
         """Generate power system data."""
         power_update = power_state.get_sync()
@@ -473,6 +513,75 @@ class DataCollector:
             error_messages=self._error_messages.copy(),
             uptime_seconds=uptime,
         )
+
+    def _evaluate_alerts(
+        self, motors: MotorsData, ina228: Ina228SensorsData
+    ) -> AlertsData:
+        motor_alerts = self._evaluate_motor_alerts(motors)
+        ina228_alerts = self._evaluate_ina228_alerts(ina228)
+        return AlertsData(motors=motor_alerts, ina228=ina228_alerts)
+
+    def _evaluate_motor_alerts(self, motors: MotorsData) -> MotorsAlertsData:
+        motor_map = {
+            "left_hip": motors.left_hip,
+            "right_hip": motors.right_hip,
+            "left_knee": motors.left_knee,
+            "right_knee": motors.right_knee,
+        }
+
+        alerts = {}
+        for joint_name, motor in motor_map.items():
+            alerts[joint_name] = MotorAlertData(
+                temperature=self._evaluate_metric(
+                    motor.temperature, self._thresholds.motors.temperature
+                ),
+                current=self._evaluate_metric(
+                    motor.current, self._thresholds.motors.current
+                ),
+            )
+
+        return MotorsAlertsData(
+            left_hip=alerts["left_hip"],
+            right_hip=alerts["right_hip"],
+            left_knee=alerts["left_knee"],
+            right_knee=alerts["right_knee"],
+        )
+
+    def _evaluate_ina228_alerts(self, ina228: Ina228SensorsData) -> Ina228AlertsData:
+        sensor_map = {
+            "left_hip": ina228.left_hip,
+            "right_hip": ina228.right_hip,
+            "left_knee": ina228.left_knee,
+            "right_knee": ina228.right_knee,
+        }
+
+        alerts = {}
+        for joint_name, sensor in sensor_map.items():
+            alerts[joint_name] = Ina228AlertData(
+                voltage=self._evaluate_metric(
+                    sensor.voltage, self._thresholds.ina228.voltage
+                ),
+                current=self._evaluate_metric(
+                    sensor.current, self._thresholds.ina228.current
+                ),
+            )
+
+        return Ina228AlertsData(
+            left_hip=alerts["left_hip"],
+            right_hip=alerts["right_hip"],
+            left_knee=alerts["left_knee"],
+            right_knee=alerts["right_knee"],
+        )
+
+    @staticmethod
+    def _evaluate_metric(
+        value: float, thresholds: MetricThresholds
+    ) -> Optional[AlertSeverity]:
+        if value >= thresholds.critical:
+            return AlertSeverity.CRITICAL
+        if value >= thresholds.warning:
+            return AlertSeverity.WARNING
+        return None
 
 
 
